@@ -63,8 +63,22 @@ public class TFIDFModelProvider implements Provider<TFIDFModel> {
                                             .withAttribute(TagData.ITEM_ID, item)
                                             .get()) {
                 String tag = tagApplication.get(TagData.TAG);
-                // TODO Count this tag application in the term frequency vector
-                // TODO Also count it in the document frequencey vector when needed
+                // Count this tag application in the term frequency vector
+                // That is, count the number of times the tag is on the item:
+                if (work.get(tag) == null) {
+                  work.put(tag, (double)1);
+                } else {
+                  work.put(tag, work.get(tag) + 1);
+                }
+                // Also count it in the document frequency vector when needed
+                // That is, count the number of items the tag is on
+                if (work.get(tag) == 1) {
+                  if (docFreq.get(tag) == null) {
+                    docFreq.put(tag,(double)1);
+                  } else {
+                    docFreq.put(tag,docFreq.get(tag) + 1);
+                  }
+                }
             }
 
             itemVectors.put(item, work);
@@ -87,10 +101,21 @@ public class TFIDFModelProvider implements Provider<TFIDFModel> {
         for (Map.Entry<Long, Map<String, Double>> entry : itemVectors.entrySet()) {
             Map<String, Double> tv = new HashMap<>(entry.getValue());
 
-            // TODO Convert this vector to a TF-IDF vector
-            // TODO Normalize the TF-IDF vector to be a unit vector
+            // Convert this vector to a TF-IDF vector
+            for (Map.Entry<String, Double> e : tv.entrySet()) {
+                e.setValue(docFreq.get(e.getKey()) * e.getValue());
+            }
+            // Normalize the TF-IDF vector to be a unit vector
             // Normalize it by dividing each element by its Euclidean norm, which is the
             // square root of the sum of the squares of the values.
+            double euclideanNorm = 0;
+            for (Map.Entry<String, Double> e : tv.entrySet()) {
+                euclideanNorm += e.getValue() * e.getValue();
+            }
+            euclideanNorm = Math.sqrt(euclideanNorm);
+            for (Map.Entry<String, Double> e : tv.entrySet()) {
+                e.setValue(e.getValue() / euclideanNorm);
+            }
 
             modelData.put(entry.getKey(), tv);
         }
